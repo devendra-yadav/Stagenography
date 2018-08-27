@@ -11,7 +11,7 @@ public class Stagenography {
 
 	public static void main(String[] args) {
 				
-		if(args[0]==null) {
+		if(args==null) {
 			showHelpMessage();
 		}else if(args[0].equalsIgnoreCase("-encode")&&args.length==4) {
 			if(args[1]==null||args[2]==null||args[3]==null) {
@@ -20,8 +20,13 @@ public class Stagenography {
 				String inputImageFile=args[1];
 				String message=args[2];
 				String outputImageFile=args[3];
-				encode(inputImageFile, message, outputImageFile);
-				System.out.println("Message encoded. Output image file : \""+outputImageFile+"\". Message length : "+message.length());
+				boolean isEncodingSuccessfull=encode(inputImageFile, message, outputImageFile);
+				if(isEncodingSuccessfull) {
+					System.out.println("Message encoded. Output image file : \""+outputImageFile+"\". Message length : "+message.length());
+				}else {
+					System.err.println("Could not encode!!");
+				}
+				
 			}
 		}else if(args[0].equalsIgnoreCase("-decode")&&args.length==3) {
 			if(args[1]==null||args[2]==null) {
@@ -42,7 +47,7 @@ public class Stagenography {
 					System.err.println("Please check the input. "+e.getMessage());
 					showHelpMessage();
 				}catch (Exception e) {
-					System.out.println("Some unexpected exception. "+e.getMessage());
+					System.err.println("Some unexpected exception. "+e.getMessage());
 					showHelpMessage();
 				}
 				
@@ -58,8 +63,8 @@ public class Stagenography {
 	 */
 	private static void showHelpMessage() {
 		System.out.println("\n------------>Usage<--------------");
-		System.out.println("To Encode : java com.dev.Stagenography -encode \"<input-image-fullpath>\" \"<hidden-text>\" \"<output-image-fullpath>\"");
-		System.out.println("To Decode : java com.dev.Stagenography -decode \"<image-file-fullpath>\" \"<expected-length-of-message>\"");
+		System.out.println("To Encode : java -jar Stagenography.jar -encode \"<input-image-fullpath>\" \"<hidden-text>\" \"<output-image-fullpath>\"");
+		System.out.println("To Decode : java -jar Stagenography.jar -decode \"<image-file-fullpath>\" \"<expected-length-of-message>\"");
 	}
 
 	/***
@@ -165,14 +170,15 @@ public class Stagenography {
 	 * @param inputImageFile input image file name
 	 * @param message text that we want to hide in the image
 	 * @param outputImageFile output image file name. this image will contain the hidden message
+	 * @return true/false for success/failure
 	 */
-	private static void encode(String inputImageFile, String message, String outputImageFile) {
+	private static boolean encode(String inputImageFile, String message, String outputImageFile) {
 		
 		//get the BufferedImage object to start the work
 		BufferedImage theBufferedImage=getBufferedImageFromFile(inputImageFile);
 		
 		if(theBufferedImage==null) {
-			return;
+			return false;
 		}
 		
 		//Convert hidden text in string format to byte[]
@@ -241,25 +247,35 @@ public class Stagenography {
 		}
 
 		//Write the updated bufferedImage object to output image file. Currently only png output image file is accepted.
-		writeToImageFile(outputImageFile, theBufferedImage);
+		boolean output=writeToImageFile(outputImageFile, theBufferedImage);
 
+		if(output) {
+			return true;
+		}else {
+			return false;
+		}
+		
 	}
 
 	/***
 	 * Create an image file from BufferedImage object
 	 * @param outputImageFile name of the image file to be created
 	 * @param theBufferedImage BufferedImage object. This is the modified BufferedImage object after the message has been added to the original input image
+	 * @return true/false for success/failure
 	 */
-	private static void writeToImageFile(String outputImageFile, BufferedImage theBufferedImage) {
+	private static boolean writeToImageFile(String outputImageFile, BufferedImage theBufferedImage) {
 		//Write the updated bufferedImage object to output image file. Currently only png output image file is accepted.
 		try {
 			if(Utility.isValidoutputImage(outputImageFile)) {
 				ImageIO.write(theBufferedImage, "png", new File(outputImageFile));
+				return true;
 			}else {
 				System.err.println("Only png output is accepted!!!");
+				return false;
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			System.out.println("Some exception in creating output image file. "+e.getMessage());
+			return false;
 		}
 	}
 
