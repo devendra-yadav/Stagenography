@@ -9,8 +9,13 @@ import javax.imageio.ImageIO;
 
 public class Stagenography {
 
+	private static final byte END_OF_MESSAGE_BYTE=(byte)223;
+	
 	public static void main(String[] args) {
-				
+		cmdLineHandling(args);
+	}
+
+	private static void cmdLineHandling(String[] args) {
 		if(args==null) {
 			showHelpMessage();
 		}else if(args[0].equalsIgnoreCase("-encode")&&args.length==4) {
@@ -28,25 +33,20 @@ public class Stagenography {
 				}
 				
 			}
-		}else if(args[0].equalsIgnoreCase("-decode")&&args.length==3) {
-			if(args[1]==null||args[2]==null) {
+		}else if(args[0].equalsIgnoreCase("-decode")&&args.length==2) {
+			if(args[1]==null) {
 				showHelpMessage();
 			}else {
 				String inputImageFile=args[1];
-				int expectedMessageLength=0;
 				try {
-					expectedMessageLength=Integer.parseInt(args[2]);
-					String message=decode(inputImageFile, expectedMessageLength);
+					String message=decode(inputImageFile);
 					if(message==null) {
 						System.out.println("No decoded message.");
 					}else {
 						System.out.println("Decoded Message >>"+message+"<<");
 					}
 					
-				} catch (NumberFormatException e) {
-					System.err.println("Please check the input. "+e.getMessage());
-					showHelpMessage();
-				}catch (Exception e) {
+				} catch (Exception e) {
 					System.err.println("Some unexpected exception. "+e.getMessage());
 					showHelpMessage();
 				}
@@ -55,7 +55,6 @@ public class Stagenography {
 		}else {
 			showHelpMessage();
 		}
-		
 	}
 
 	/***
@@ -64,7 +63,7 @@ public class Stagenography {
 	private static void showHelpMessage() {
 		System.out.println("\n------------>Usage<--------------");
 		System.out.println("To Encode : java -jar Stagenography.jar -encode \"<input-image-fullpath>\" \"<hidden-text>\" \"<output-image-fullpath>\"");
-		System.out.println("To Decode : java -jar Stagenography.jar -decode \"<image-file-fullpath>\" \"<expected-length-of-message>\"");
+		System.out.println("To Decode : java -jar Stagenography.jar -decode \"<image-file-fullpath>\"");
 	}
 
 	/***
@@ -73,9 +72,9 @@ public class Stagenography {
 	 * @param messageLength length of the expected message
 	 * @return decoded string message
 	 */
-	private static String decode(String inputImageFile, int messageLength) {
-		//initialize the byte array that will store the decoded bytes from image
-		byte[] messageBytes=new byte[messageLength];
+	private static String decode(String inputImageFile) {
+		//initialize the StribgBuilder that will store the decoded message from image
+		StringBuilder message=new StringBuilder();
 		
 		//get the BufferedImage Object from the input image file.
 		BufferedImage theBufferedImage=getBufferedImageFromFile(inputImageFile);
@@ -88,20 +87,12 @@ public class Stagenography {
 		int imageWidth=theBufferedImage.getWidth();
 		int imageHeight=theBufferedImage.getHeight();
 
-		//Counter to check if all the message bytes are decoded.
-		int messageByteCounter=0;
-
 		//Boolean value to track if all message bytes are decoded or not. Used to break out of loops.
 		boolean isMessageFinished=false;
 		
 		//Read pixels of image (1 pixel = 4bytes. Alpha, Red Green Blue)
 		for(int i=0;i<imageWidth;i++) {
 			for(int j=0;j<imageHeight;j++) {
-				
-				if(messageByteCounter>messageLength-1) {
-					isMessageFinished=true;
-					break;
-				}
 				
 				/*
 				 * We have 4 bytes from a single pixel. Last bit of each byte (Alpha, Red, Green and Blue) contains the bit of our message. 
@@ -124,7 +115,14 @@ public class Stagenography {
 				int secondHalfByteOfMessage=extractHalfByteOfMessage(thePixel);
 				
 				//Combine both halves of the message byte
-				messageBytes[messageByteCounter++]=(byte)((firstHalfByteOfMessage<<4) | secondHalfByteOfMessage);
+				byte theMessageByte=(byte)((firstHalfByteOfMessage<<4) | secondHalfByteOfMessage);
+				
+				if(theMessageByte==END_OF_MESSAGE_BYTE) {
+					isMessageFinished=true;
+					break;
+				}
+				
+				message.append((char)(theMessageByte));
 			}
 			
 			//if all bytes of message extracted from image then break out of the loop.
@@ -133,7 +131,7 @@ public class Stagenography {
 			}
 		}
 		
-		return new String(messageBytes);
+		return message.toString();
 	}
 
 	/***
@@ -201,6 +199,42 @@ public class Stagenography {
 				//Check if all message bytes are processed or not.
 				if(messageByteCounter>message.length()-1) {
 					isMessageFinished=true;
+					
+					//Add an extra byte at the end to mark the end of the message.
+					//We will use END_OF_MESSAGE_BYTE static final variable to use as end of the message.
+					
+					//Get the pixel from image
+					int thePixel=theBufferedImage.getRGB(i, j);
+					
+					/*
+					 * We have 4 bytes from a single pixel. We will replace that last bit of each byte (Alpha, Red, Green and Blue) with the bit from our message byte.
+					 * We need 2 pixels to hide 1 byte(8 bits) of data. hence we will work on 4 bit of message byte at a time. 
+					 */
+					
+					//get 1st half of message byte 
+					int firstHalfEndOfMessageByte=(END_OF_MESSAGE_BYTE & 0xF0) >> 4;
+			
+					//add this half byte to current pixel and get modified pixel
+					int modifiedPixel=getModifiedPixel(thePixel, firstHalfEndOfMessageByte);
+					
+					//update the current pixel of the image
+					theBufferedImage.setRGB(i, j, modifiedPixel);
+					
+					//Increment j to get next pixel
+					j++;
+
+					//get next pixel to put 2nd half of the message byte
+					thePixel=theBufferedImage.getRGB(i, j);
+					
+					//get 2nd half of message byte
+					int secondHalfEndOfMessagebyte=(END_OF_MESSAGE_BYTE & 0x0F);
+					
+					//add this half byte to current pixel and get modified pixel
+					modifiedPixel=getModifiedPixel(thePixel, secondHalfEndOfMessagebyte);
+					
+					//update the current pixel of the image
+					theBufferedImage.setRGB(i, j, modifiedPixel);
+					
 					break;
 				}
 				
