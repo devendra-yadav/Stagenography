@@ -4,6 +4,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
@@ -15,6 +16,10 @@ public class Stagenography {
 		cmdLineHandling(args);
 	}
 
+	/***
+	 * This method shows usgae information and handles the cmd line inputs and take appropriate actions
+	 * @param args input arguments related to encoding or decoding 
+	 */
 	private static void cmdLineHandling(String[] args) {
 		if(args==null) {
 			showHelpMessage();
@@ -43,7 +48,7 @@ public class Stagenography {
 					if(message==null) {
 						System.out.println("No decoded message.");
 					}else {
-						System.out.println("Decoded Message >>"+message+"<<");
+						System.out.println("Decoded Message >>"+message+"<< found in \""+inputImageFile+"\"");
 					}
 					
 				} catch (Exception e) {
