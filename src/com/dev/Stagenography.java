@@ -6,6 +6,11 @@ import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 
+/***
+ * 
+ * @author Devendra_Yadav
+ * 
+ */
 public class Stagenography {
 
 	private static final byte END_OF_MESSAGE_BYTE=(byte)223;
